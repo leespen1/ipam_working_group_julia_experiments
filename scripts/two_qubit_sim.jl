@@ -1,3 +1,13 @@
+#!/usr/bin/env julia
+#SBATCH --job-name=two_qubit_sim     # Job name
+#SBATCH --mail-type=NONE             # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --nodes=1                    # Maximum number of nodes to be allocated
+#SBATCH --ntasks-per-node=40         # Maximum number of tasks on each node
+#SBATCH --cpus-per-task=1            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
+#SBATCH --mem-per-cpu=2G             # Memory (i.e. RAM) per NODE
+#SBATCH --constraint=intel18         # Run on the
+#SBATCH --time=3:59:00               # Wall time limit (days-hrs:min:sec)
+#SBATCH --output=%A/two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
 using DrWatson
 @quickactivate "JuliaPulseExperiments"
 
@@ -62,12 +72,12 @@ end # @everywhere
 
 function main()
     allparams = Dict(
-        "w1" => collect(0:0.1:3), # Frequency of control 1
-        "w2" => [0], # Frequency of control 2
-        "w3" => [0], # Frequency of control 3
-        "a1" => [0,1], # Amplitude of control 1
-        "a2" => [0], # Amplitude of control 2
-        "a3" => [0], # Amplitude of control 3
+        "w1" => collect(0:0.01:3), # Frequency of control 1
+        "w2" => collect(0:0.01:3), # Frequency of control 2
+        "w3" => collect(0:0.01:3), # Frequency of control 3
+        "a1" => collect(0:0.01:3), # Amplitude of control 1
+        "a2" => collect(0:0.01:3), # Amplitude of control 2
+        "a3" => collect(0:0.01:3), # Amplitude of control 3
         "controlType" => Val(:sine),
         "initialState" => collect(0:3)
     )
