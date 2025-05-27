@@ -1,13 +1,13 @@
 #!/usr/bin/env julia
 #SBATCH --job-name=two_qubit_sim     # Job name
 #SBATCH --mail-type=NONE             # Mail events (NONE, BEGIN, END, FAIL, ALL)
-#SBATCH --nodes=1                    # Maximum number of nodes to be allocated
-#SBATCH --ntasks-per-node=4         # Maximum number of tasks on each node
+#SBATCH --nodes=8                    # Maximum number of nodes to be allocated
+#SBATCH --ntasks-per-node=20         # Maximum number of tasks on each node
 #SBATCH --cpus-per-task=1            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
 #SBATCH --mem-per-cpu=2G             # Memory (i.e. RAM) per NODE
 #SBATCH --constraint=intel18         # Run on the
-#SBATCH --time=0:05:00               # Wall time limit (days-hrs:min:sec)
-#SBATCH --output=new_two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
+#SBATCH --time=12:00:00               # Wall time limit (days-hrs:min:sec)
+#SBATCH --output=Log/two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
 using DrWatson
 quickactivate(pwd(), "JuliaPulseExperiments") # Necessary when using sbatch with this file directory, since sbatch feeds this file into julia using stdin, hence __FILE__ is /.
 
