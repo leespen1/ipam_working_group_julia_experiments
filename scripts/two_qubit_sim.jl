@@ -8,9 +8,10 @@
 #SBATCH --constraint=intel18         # Run on the
 #SBATCH --time=0:05:00               # Wall time limit (days-hrs:min:sec)
 #SBATCH --output=new_two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
-using DrWatson, Distributed, SlurmClusterManager
+using DrWatson
 quickactivate(pwd(), "JuliaPulseExperiments") # Necessary when using sbatch with this file directory, since sbatch feeds this file into julia using stdin, hence __FILE__ is /.
 
+using Distributed, SlurmClusterManager
 try 
     addprocs(SlurmManager(), exeflags="--project=$(DrWatson.projectdir())")
 catch
@@ -52,45 +53,40 @@ end
         tlist = LinRange(0,101,101)
         initial_state = basis(4, init_basis_index, dims=(2,2))
         sol = sesolve(H_t, initial_state, tlist, params=control_vector, progress_bar=Val(false))
-        return hcat(get_data.(sol.states)...)
+        return get_data(sol.states[end])
     end
 
     function makesim(d::Dict)
         @unpack w1, w2, w3, a1, a2, a3, initialState = d
         #control_vector = SVector(w1, w2, w3, a1, a2, a3)
         control_vector = [w1, w2, w3, a1, a2, a3]
-        state_history = my_sim(control_vector, initialState)
+        final_state = my_sim(control_vector, initialState)
         fulld = copy(d)
-        fulld["state_history"] = state_history
+        fulld["final_state"] = final_state
         return fulld
     end
-end @everywhere
+end #@everywhere
 
 function main()
     allparams = Dict(
-        "w1" => collect(0:1:3), # Frequency of control 1
-        "w2" => collect(0:1:3), # Frequency of control 2
-        "w3" => collect(0:1:3), # Frequency of control 3
-        "a1" => collect(0:1:3), # Amplitude of control 1
-        "a2" => collect(0:1:3), # Amplitude of control 2
-        "a3" => collect(0:1:3), # Amplitude of control 3
-        "controlType" => Val(:sine),
+        "w1" => collect(0:1:1), # Frequency of control 1
+        "w2" => collect(0:1:1), # Frequency of control 2
+        "w3" => collect(0:1:1), # Frequency of control 3
+        "a1" => collect(0:1:1), # Amplitude of control 1
+        "a2" => collect(0:1:1), # Amplitude of control 2
+        "a3" => collect(0:1:1), # Amplitude of control 3
+        "controlType" => Val(:sines),
         "initialState" => collect(0:3)
     )
     
     dicts = dict_list(allparams)
 
-    @sync @distributed for d in dicts
-        # First way, always runs test, doesn't overwrite
-        #f = makesim(d)
-        #d_unwrapped  = unwrap_vals(d)
-        #output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped, "jld2"))
-        #@tagsave(output_name, f, safe=true)
-        
-        # Second way, checks if sim has already been run
-        d_unwrapped  = unwrap_vals(d)
-        output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped))
-        produce_or_load(makesim, d, filename=output_name, tag=true, loadfile=false)
+    @sync @distributed for d_chunk in chunked_partition(dicts, nworkers())
+        for d in d_chunk
+            d_unwrapped  = unwrap_vals(d)
+            output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped))
+            produce_or_load(makesim, d, filename=output_name, tag=true, loadfile=false)
+        end
     end
 end
 
