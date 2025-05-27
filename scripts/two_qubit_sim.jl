@@ -47,20 +47,19 @@ end
         return Dict(k => getVal(v) for (k, v) in tags)
     end
 
-    function my_sim(control_vector, init_basis_index)
+    function my_sim(control_vector, init_basis_index, tlist)
         @assert length(control_vector) == 6
         H_t = hamiltonian(Val(:sines))
-        tlist = LinRange(0,101,101)
         initial_state = basis(4, init_basis_index, dims=(2,2))
         sol = sesolve(H_t, initial_state, tlist, params=control_vector, progress_bar=Val(false))
-        return get_data(sol.states[end])
+        return hcat(get_data.(sol.states)...)
     end
 
     function makesim(d::Dict)
-        @unpack w1, w2, w3, a1, a2, a3, initialState = d
+        @unpack w1, w2, w3, a1, a2, a3, initialState, tlist = d
         #control_vector = SVector(w1, w2, w3, a1, a2, a3)
         control_vector = [w1, w2, w3, a1, a2, a3]
-        final_state = my_sim(control_vector, initialState)
+        final_state = my_sim(control_vector, initialState, tlist)
         fulld = copy(d)
         fulld["final_state"] = final_state
         return fulld
@@ -72,9 +71,10 @@ function main()
         "w1" => collect(0:1:1), # Frequency of control 1
         "w2" => collect(0:1:1), # Frequency of control 2
         "w3" => collect(0:1:1), # Frequency of control 3
-        "a1" => collect(0:1:0), # Amplitude of control 1
-        "a2" => collect(0:1:0), # Amplitude of control 2
-        "a3" => collect(0:1:0), # Amplitude of control 3
+        "a1" => collect(0:1:1), # Amplitude of control 1
+        "a2" => collect(0:1:1), # Amplitude of control 2
+        "a3" => collect(0:1:1), # Amplitude of control 3
+        "tlist" => [LinRange(0,100,11)]
         "controlType" => Val(:sines),
         "initialState" => collect(0:3)
     )
