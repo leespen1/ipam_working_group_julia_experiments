@@ -2,9 +2,9 @@
 #SBATCH --job-name=two_qubit_sim     # Job name
 #SBATCH --mail-type=NONE             # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --nodes=1                    # Maximum number of nodes to be allocated
-#SBATCH --ntasks-per-node=3         # Maximum number of tasks on each node
+#SBATCH --ntasks-per-node=4         # Maximum number of tasks on each node
 #SBATCH --cpus-per-task=1            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
-#SBATCH --mem-per-cpu=4G             # Memory (i.e. RAM) per NODE
+#SBATCH --mem-per-cpu=2G             # Memory (i.e. RAM) per NODE
 #SBATCH --constraint=intel18         # Run on the
 #SBATCH --time=0:05:00               # Wall time limit (days-hrs:min:sec)
 #SBATCH --output=new_two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
@@ -72,9 +72,9 @@ function main()
         "w1" => collect(0:1:1), # Frequency of control 1
         "w2" => collect(0:1:1), # Frequency of control 2
         "w3" => collect(0:1:1), # Frequency of control 3
-        "a1" => collect(0:1:1), # Amplitude of control 1
-        "a2" => collect(0:1:1), # Amplitude of control 2
-        "a3" => collect(0:1:1), # Amplitude of control 3
+        "a1" => collect(0:1:0), # Amplitude of control 1
+        "a2" => collect(0:1:0), # Amplitude of control 2
+        "a3" => collect(0:1:0), # Amplitude of control 3
         "controlType" => Val(:sines),
         "initialState" => collect(0:3)
     )
@@ -84,8 +84,14 @@ function main()
     @sync @distributed for d_chunk in chunked_partition(dicts, nworkers())
         for d in d_chunk
             d_unwrapped  = unwrap_vals(d)
-            output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped))
-            produce_or_load(makesim, d, filename=output_name, tag=true, loadfile=false)
+
+            #output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped))
+            #produce_or_load(makesim, d, filename=output_name, tag=true, loadfile=false)
+
+            # Alternative call, will rerun existing tests (but now overwrite)
+            f = makesim(d)
+            output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped, "jld2"))
+            @tagsave(output_name, f, safe=true)
         end
     end
 end
