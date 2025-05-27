@@ -2,29 +2,26 @@
 #SBATCH --job-name=two_qubit_sim     # Job name
 #SBATCH --mail-type=NONE             # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --nodes=1                    # Maximum number of nodes to be allocated
-#SBATCH --ntasks-per-node=40         # Maximum number of tasks on each node
+#SBATCH --ntasks-per-node=3         # Maximum number of tasks on each node
 #SBATCH --cpus-per-task=1            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
-#SBATCH --mem-per-cpu=2G             # Memory (i.e. RAM) per NODE
+#SBATCH --mem-per-cpu=4G             # Memory (i.e. RAM) per NODE
 #SBATCH --constraint=intel18         # Run on the
-#SBATCH --time=3:59:00               # Wall time limit (days-hrs:min:sec)
-#SBATCH --output=%A/two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
-using DrWatson
-@quickactivate "JuliaPulseExperiments"
+#SBATCH --time=0:05:00               # Wall time limit (days-hrs:min:sec)
+#SBATCH --output=new_two_qubit_sim_%A.log     # Path to the standard output and error files relative to the working directory
+using DrWatson, Distributed, SlurmClusterManager
+quickactivate(pwd(), "JuliaPulseExperiments") # Necessary when using sbatch with this file directory, since sbatch feeds this file into julia using stdin, hence __FILE__ is /.
 
-using Distributed, SlurmClusterManager
 try 
-    addprocs(SlurmManager())
+    addprocs(SlurmManager(), exeflags="--project=$(DrWatson.projectdir())")
 catch
     println("SLURM environment not detected. Processes not added from SlurmManager")
 end
 
-@everywhere begin 
-    using DrWatson
-    @quickactivate "JuliaPulseExperiments"
-    using StaticArrays, QuantumToolbox
 
-    include(srcdir("utilities.jl"))
+@everywhere using DrWatson, StaticArrays, QuantumToolbox
+@everywhere include(srcdir("utilities.jl"))
 
+@everywhere begin
     function hamiltonian(control_type::Union{Symbol, Val})
         H1 = tensor(eye(2), sigmax())
         H2 = tensor(sigmax(), eye(2))
@@ -67,17 +64,16 @@ end
         fulld["state_history"] = state_history
         return fulld
     end
-end # @everywhere
-
+end @everywhere
 
 function main()
     allparams = Dict(
-        "w1" => collect(0:0.01:3), # Frequency of control 1
-        "w2" => collect(0:0.01:3), # Frequency of control 2
-        "w3" => collect(0:0.01:3), # Frequency of control 3
-        "a1" => collect(0:0.01:3), # Amplitude of control 1
-        "a2" => collect(0:0.01:3), # Amplitude of control 2
-        "a3" => collect(0:0.01:3), # Amplitude of control 3
+        "w1" => collect(0:1:3), # Frequency of control 1
+        "w2" => collect(0:1:3), # Frequency of control 2
+        "w3" => collect(0:1:3), # Frequency of control 3
+        "a1" => collect(0:1:3), # Amplitude of control 1
+        "a2" => collect(0:1:3), # Amplitude of control 2
+        "a3" => collect(0:1:3), # Amplitude of control 3
         "controlType" => Val(:sine),
         "initialState" => collect(0:3)
     )
