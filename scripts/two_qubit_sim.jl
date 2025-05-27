@@ -68,13 +68,13 @@ end #@everywhere
 
 function main()
     allparams = Dict(
-        "w1" => collect(0:1:1), # Frequency of control 1
-        "w2" => collect(0:1:1), # Frequency of control 2
-        "w3" => collect(0:1:1), # Frequency of control 3
-        "a1" => collect(0:1:1), # Amplitude of control 1
-        "a2" => collect(0:1:1), # Amplitude of control 2
-        "a3" => collect(0:1:1), # Amplitude of control 3
-        "tlist" => [LinRange(0,100,11)]
+        "w1" => collect(0:0.1:1), # Frequency of control 1
+        "w2" => collect(0:0.1:1), # Frequency of control 2
+        "w3" => collect(0:0.1:1), # Frequency of control 3
+        "a1" => collect(0:0.1:1), # Amplitude of control 1
+        "a2" => collect(0:0.1:1), # Amplitude of control 2
+        "a3" => collect(0:0.1:1), # Amplitude of control 3
+        "tlist" => [LinRange(0,100,11)],
         "controlType" => Val(:sines),
         "initialState" => collect(0:3)
     )
