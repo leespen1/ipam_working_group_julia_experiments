@@ -29,6 +29,7 @@ function makesim(d::Dict)
     else
         error("Invalid optimizer string $(d["optimizer"])")
     end
+    silent = DrWatson.readenv("SILENT", true)
 
 
     for (k, theta2) in enumerate(theta2range)
@@ -39,7 +40,7 @@ function makesim(d::Dict)
 
         dims = ntuple(_ -> 2, Nqubits)
         final_dm = Qobj(final_state, dims=dims) |> ket2dm
-        W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer)
+        W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer, silent=silent)
 
         GC.gc() # Being safe about running out of memory
     end
