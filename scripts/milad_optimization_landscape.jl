@@ -1,7 +1,7 @@
 using DrWatson
 quickactivate(pwd(), "JuliaPulseExperiments")
 
-using QuantumToolbox, Yao, Random, ProgressMeter
+using QuantumToolbox, Yao, Random, ProgressMeter, Dates
 
 include(srcdir("wasserstein_distance.jl"))
 include(srcdir("milad_circuit.jl"))
@@ -10,7 +10,6 @@ include(srcdir("milad_circuit.jl"))
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
 """
 function makesim(d::Dict)
-    println("Running sim!")
     @unpack Nqubits, i1, i2, theta1, Npoints = d
     angles = rand(MersenneTwister(0), Nqubits) .* 2pi
     angles[1] = pi
@@ -96,9 +95,19 @@ function main(obj_type=:infidelity)
     dicts = dict_list(allparams)
 
 
-    @showprogress for d in get_chunk(dicts, slurm_task_id, slurm_ntasks)
-        produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
-        #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
+    my_chunk = get_chunk(dicts, slurm_task_id, slurm_ntasks)
+    ntasks_in_chunk = length(my_chunk)
+    if haskey(ENV, "SLURM_JOB_ID")
+        for (i,d) in enumerate(my_chunk)
+            println("[$(Dates.now())] Running simulation $i/$ntasks_in_chunk ...")
+            produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
+            #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
+        end
+    else
+        @showprogress for d in my_chunk
+            produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
+            #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
+        end
     end
 end
 
