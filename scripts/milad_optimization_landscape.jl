@@ -10,6 +10,7 @@ includet(srcdir("milad_circuit.jl"))
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
 """
 function makesim(d::Dict)
+    println("Running sim!")
     @unpack Nqubits, i1, i2, theta1, Npoints = d
     angles = rand(MersenneTwister(0), Nqubits) .* 2pi
     angles[1] = pi
@@ -31,7 +32,7 @@ function makesim(d::Dict)
         final_dm = Qobj(final_state, dims=dims) |> ket2dm
         W1_vec[k] = W1_primal(final_dm, ghz_dm)
 
-        #GC.gc() # Being safe about running out of memory
+        GC.gc() # Being safe about running out of memory
     end
 
     fulld = Dict{String, Any}(copy(d))
@@ -75,7 +76,7 @@ function get_chunk(v, task_idx, ntasks)
 end
 
 function main(obj_type=:infidelity)
-    Npoints = 11
+    Npoints = DrWatson.readenv("NPOINTS", 11)
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
     allparams = Dict{String, Any}(
         "Nqubits" => collect(3:max_Nqubits),
@@ -92,10 +93,9 @@ function main(obj_type=:infidelity)
     slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
 
     @showprogress for d in get_chunk(dicts, slurm_task_id, slurm_ntasks)
-        f = makesim(d)
         #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), f)
         produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
-        #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), f)
+        #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
     end
 end
 
