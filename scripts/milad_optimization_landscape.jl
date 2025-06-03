@@ -64,10 +64,21 @@ function run_milad_circuit_operator(angles)
 end
 
 
+function get_chunk(v, task_idx, ntasks)
+    # task_idx is 0-indexed, to be consistent with slurm
+    @assert task_idx < ntasks
+    # Divide `v` into `ntasks` parts
+    chunksize, rem = divrem(length(v), ntasks)
+    start_idx = task_idx * chunksize + min(task_idx, rem) + 1 # The min accounts for offsets due to extra elements in earlier partitions
+    end_idx = start_idx + chunksize - 1 + (task_idx < rem ? 1 : 0)
+    return view(v, start_idx:end_idx)
+end
+
 function main(obj_type=:infidelity)
     Npoints = 11
+    max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
     allparams = Dict{String, Any}(
-        "Nqubits" => collect(3:4),
+        "Nqubits" => collect(3:max_Nqubits),
         "i1" => [2],
         "i2" => [3],
         "theta1" => collect(LinRange(0,2pi,Npoints)),
@@ -75,7 +86,12 @@ function main(obj_type=:infidelity)
     )
 
     dicts = dict_list(allparams)
-    @showprogress for d in dicts
+
+    # For this to work, all job arrays should start at 0 and use stepsize 1
+    slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
+    slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
+
+    @showprogress for d in get_chunk(dicts, slurm_task_id, slurm_ntasks)
         f = makesim(d)
         #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), f)
         produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
