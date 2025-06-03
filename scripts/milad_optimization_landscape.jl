@@ -3,8 +3,8 @@ quickactivate(pwd(), "JuliaPulseExperiments")
 
 using QuantumToolbox, Yao, Random, ProgressMeter
 
-includet(srcdir("wasserstein_distance.jl"))
-includet(srcdir("milad_circuit.jl"))
+include(srcdir("wasserstein_distance.jl"))
+include(srcdir("milad_circuit.jl"))
 
 """
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
