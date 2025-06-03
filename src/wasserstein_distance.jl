@@ -7,7 +7,7 @@ Compute the W1 distance (Quantum Earth Mover's Distance) between density
 matrices sigma and rho using the primal formulation and solving as a PSD
 program.
 """
-function W1_primal(sigma::QuantumObject, rho::QuantumObject; silent=true)
+function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true)
     @assert size(sigma) == size(rho)
     N = size(sigma, 1)
     Nqubits = length(sigma.dims)
@@ -15,7 +15,7 @@ function W1_primal(sigma::QuantumObject, rho::QuantumObject; silent=true)
 
     sigma_minus_rho = (sigma - rho).data
 
-    model = Model(MosekTools.Optimizer)
+    model = Model(optimizer)
     if silent
         set_silent(model)
     end
@@ -52,7 +52,7 @@ Compute the W1 distance (Quantum Earth Mover's Distance) between density
 matrices sigma and rho using the dual formulation and solving as a PSD
 program.
 """
-function W1_dual(sigma::QuantumObject, rho::QuantumObject; silent=true)
+function W1_dual(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true)
     # To make this efficient inside a loop, I will want to reuse a single model
     @assert size(sigma) == size(rho)
     N = size(sigma, 1)
@@ -61,8 +61,7 @@ function W1_dual(sigma::QuantumObject, rho::QuantumObject; silent=true)
     N_div2 = div(N,2)
     sigma_minus_rho = (sigma-rho).data
     
-    #model = Model(MosekTools.Optimizer)
-    model = Model(SCS.Optimizer)
+    model = Model(optimizer)
     if silent
         set_silent(model)
     end
