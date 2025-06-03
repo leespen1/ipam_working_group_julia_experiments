@@ -81,7 +81,7 @@ function main()
     
     dicts = dict_list(allparams)
 
-    @sync @distributed for d_chunk in chunked_partition(dicts, nworkers())
+    @sync @distributed for (chunk_i, d_chunk) in enumerate(chunked_partition(dicts, nworkers()))
         for d in d_chunk
             d_unwrapped  = unwrap_vals(d)
 
@@ -90,8 +90,8 @@ function main()
 
             # Alternative call, will rerun existing tests (but now overwrite)
             f = makesim(d)
-            output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped, "jld2"))
-            @tagsave(output_name, f, safe=true)
+            output_name = datadir("two_qubit_simulations", savename("twoQubit", d_unwrapped))
+            safesave(output_name, f)
         end
     end
 end
