@@ -22,15 +22,16 @@ function makesim(d::Dict)
     W1_vec = Vector{Float64}(undef, Npoints)
 
     optimizer_str = d["optimizer"]
-    if optimizer_str == "Mosek"
+    if lowercase(optimizer_str) == "mosek"
         optimizer = MosekTools.Optimizer
-    elseif optimizer_str == "SCS"
+    elseif lowercase(optimizer_str) == "scs"
         optimizer = SCS.Optimizer
     else
         error("Invalid optimizer string $(d["optimizer"])")
     end
-    silent = DrWatson.readenv("SILENT", true)
 
+    # Optional silent optimization set by environment
+    silent = tryparse(Bool, get(ENV, "SILENT", "true"))
 
     for (k, theta2) in enumerate(theta2range)
         angles[i2] = theta2
@@ -85,13 +86,17 @@ function get_chunk(v, task_idx, ntasks)
     return view(v, start_idx:end_idx)
 end
 
-function main(obj_type=:infidelity)
+function main()
     Npoints = DrWatson.readenv("NPOINTS", 11)
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
-    optimizer_str = DrWatson.readenv("OPTIMIZER", "Mosek")
+
     # For this to work, all job arrays should start at 0 and use stepsize 1
     slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
     slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
+
+
+    # Optionally change optimizer, set by environment
+    optimizer_str = get(ENV, "OPTIMIZER", "mosek") |> lowercase
 
     println("Running test using following environment variables:")
     @show Npoints, max_Nqubits, slurm_task_id, slurm_ntasks

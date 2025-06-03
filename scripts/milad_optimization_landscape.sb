@@ -14,7 +14,8 @@
 
 export MAX_NQUBITS=8
 export NPOINTS=101
-export OPTIMIZER="MOSEK"
+export OPTIMIZER=SCS
+export SILENT=false
 
 # To avoid Pkg/core-dump errors
 unset LD_LIBRARY_PATH
