@@ -78,6 +78,13 @@ end
 function main(obj_type=:infidelity)
     Npoints = DrWatson.readenv("NPOINTS", 11)
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
+    # For this to work, all job arrays should start at 0 and use stepsize 1
+    slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
+    slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
+
+    println("Running test using following environment variables:")
+    @show Npoints, max_Nqubits, slurm_task_id, slurm_ntasks
+
     allparams = Dict{String, Any}(
         "Nqubits" => collect(3:max_Nqubits),
         "i1" => [2],
@@ -88,12 +95,8 @@ function main(obj_type=:infidelity)
 
     dicts = dict_list(allparams)
 
-    # For this to work, all job arrays should start at 0 and use stepsize 1
-    slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
-    slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
 
     @showprogress for d in get_chunk(dicts, slurm_task_id, slurm_ntasks)
-        #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), f)
         produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
         #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
     end
