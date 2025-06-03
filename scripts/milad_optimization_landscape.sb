@@ -5,7 +5,7 @@
 #SBATCH --nodes=1                    # Maximum number of nodes to be allocated
 #SBATCH --ntasks-per-node=1          # Maximum number of tasks on each node
 #SBATCH --cpus-per-task=4            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
-#SBATCH --mem=16G                    # Memory (i.e. RAM) per NODE
+#SBATCH --mem=40G                    # Memory (i.e. RAM) per NODE
 #SBATCH --export=ALL                 
 #SBATCH --constraint=intel18         # Run on the same node launched from
 #SBATCH --time=12:00:00              # Wall time limit (days-hrs:min:sec)
@@ -14,6 +14,7 @@
 
 export MAX_NQUBITS=8
 export NPOINTS=101
+export OPTIMIZER="MOSEK"
 
 # To avoid Pkg/core-dump errors
 unset LD_LIBRARY_PATH

@@ -1,7 +1,7 @@
 using DrWatson
 quickactivate(pwd(), "JuliaPulseExperiments")
 
-using QuantumToolbox, Yao, Random, ProgressMeter, Dates
+using QuantumToolbox, Yao, Random, ProgressMeter, Dates, MosekTools, SCS
 
 include(srcdir("wasserstein_distance.jl"))
 include(srcdir("milad_circuit.jl"))
@@ -21,6 +21,16 @@ function makesim(d::Dict)
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
 
+    optimizer_str = d["optimizer"]
+    if optimizer_str == "Mosek"
+        optimizer = MosekTools.Optimizer
+    elseif optimizer_str == "SCS"
+        optimizer = SCS.Optimizer
+    else
+        error("Invalid optimizer string $(d["optimizer"])")
+    end
+
+
     for (k, theta2) in enumerate(theta2range)
         angles[i2] = theta2
         final_state = run_milad_circuit(angles) |> statevec
@@ -29,7 +39,7 @@ function makesim(d::Dict)
 
         dims = ntuple(_ -> 2, Nqubits)
         final_dm = Qobj(final_state, dims=dims) |> ket2dm
-        W1_vec[k] = W1_primal(final_dm, ghz_dm)
+        W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer)
 
         GC.gc() # Being safe about running out of memory
     end
@@ -77,6 +87,7 @@ end
 function main(obj_type=:infidelity)
     Npoints = DrWatson.readenv("NPOINTS", 11)
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
+    optimizer_str = DrWatson.readenv("OPTIMIZER", "Mosek")
     # For this to work, all job arrays should start at 0 and use stepsize 1
     slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
     slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
@@ -90,6 +101,7 @@ function main(obj_type=:infidelity)
         "i2" => [3],
         "theta1" => collect(LinRange(0,2pi,Npoints)),
         "Npoints" => [Npoints],
+        "optimizer" => optimizer_str,
     )
 
     dicts = dict_list(allparams)
@@ -99,7 +111,7 @@ function main(obj_type=:infidelity)
     ntasks_in_chunk = length(my_chunk)
     if haskey(ENV, "SLURM_JOB_ID")
         for (i,d) in enumerate(my_chunk)
-            println("[$(Dates.now())] Running simulation $i/$ntasks_in_chunk ...")
+            println("[$(Dates.now())] Running simulation $i/$ntasks_in_chunk, Nqubits=$(d["Nqubits"]), Npoints=$(d["Npoints"]), theta1=$(d["theta1"]) ...")
             produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
             #wsave(datadir("MiladCircuitDistances", savename(d, "jld2")), makesim(d))
         end
