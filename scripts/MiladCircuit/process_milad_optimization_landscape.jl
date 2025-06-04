@@ -6,19 +6,18 @@ using DataFrames, DataFrameMacros
 include(srcdir("wasserstein_distance.jl"))
 include(srcdir("milad_circuit.jl"))
 
-optimizer = "mosek"
 df = collect_results(datadir("MiladCircuitDistances"))
-filtered_df = filter(:optimizer => isequal(optimizer), df)
 
-for df_nqubits in @groupby(filtered_df, :Nqubits, :i1, :i2)
+for df_nqubits in @groupby(df, :Nqubits, :i1, :i2, :optimizer)
     i1 = df_nqubits[1, :i1]
     i2 = df_nqubits[1, :i2]
     Nqubits = df_nqubits[1, :Nqubits]
-    sorted_df = sort(df_nqubits, :theta1)
-    Npoints = sorted_df[1, :Npoints]
+    Npoints = df_nqubits[1, :Npoints]
+    optimizer = df_nqubits[1, :optimizer]
+    theta2s = df_nqubits[1, :theta2range]
 
+    sorted_df = sort(df_nqubits, :theta1)
     theta1s = sorted_df[:, :theta1]
-    theta2s = sorted_df[1, :theta2range]
 
     heatmap_size = (length(theta1s), length(theta2s))
     data_infidelity = fill(NaN, heatmap_size)
