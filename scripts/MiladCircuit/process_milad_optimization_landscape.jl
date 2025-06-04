@@ -29,7 +29,7 @@ for df_nqubits in @groupby(filtered_df, :Nqubits, :i1, :i2)
         data_W1[i,:] .= row[:W1_vec]
     end
 
-    d = @dict(Nqubits, optimizer, i1, i2)
+    d = @dict(Nqubits, Npoints, optimizer, i1, i2)
     results = merge(d, @dict(theta1s, theta2s, data_infidelity, data_W1))
     results = Dict(string(k) => v for (k, v) in results)
     wsave(datadir("MiladCircuitHeatmaps", savename(d, "jld2")), results)

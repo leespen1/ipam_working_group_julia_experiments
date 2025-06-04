@@ -14,11 +14,12 @@ function main()
         i1 = df_nqubits[1,:i1]
         i2 = df_nqubits[1,:i2]
         optimizer = df_nqubits[1,:optimizer]
+        Npoints = df_nqubits[1,:Npoints]
         x = df_nqubits[1,:theta1s]
         y = df_nqubits[1,:theta2s]
 
         data_inf = df_nqubits[1,:data_infidelity]
-        dict_inf = @dict(Nqubits, i1, i2, cost="infidelity")
+        dict_inf = @dict(Nqubits, i1, i2, Npoints, cost="infidelity")
 
         fig_inf = Figure()
         ax_inf = Axis(
@@ -31,7 +32,7 @@ function main()
 
         if !(optimizer == "none") # Only make W1 plot if W1 distances were computed
             data_W1 = df_nqubits[1,:data_W1]
-            dict_W1 = @dict(Nqubits, i1, i2, optimizer, cost="W1")
+            dict_W1 = @dict(Nqubits, i1, i2, optimizer, Npoints, cost="W1")
 
             fig_W1 = Figure()
             ax_W1 = Axis(
