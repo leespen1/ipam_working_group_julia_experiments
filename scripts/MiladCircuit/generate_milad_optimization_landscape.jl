@@ -54,7 +54,9 @@ function makesim(d::Dict)
     fulld["angles"] = angles
     fulld["theta2range"] = theta2range
     fulld["infidelity_vec"] = infidelity_vec
-    fulld["W1_vec"] = W1_vec
+    if !isnothing(optimizer)
+        fulld["W1_vec"] = W1_vec
+    end
 
     return fulld
 end
