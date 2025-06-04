@@ -20,7 +20,7 @@ for df_nqubits in @groupby(df, :Nqubits, :i1, :i2, :optimizer)
     data_W1 = df_nqubits[1,:data_W1]
 
 
-    dict_inf = @dict(Nqubits, i1, i2, optimizer)
+    dict_inf = @dict(Nqubits, i1, i2)
     dict_W1 = @dict(Nqubits, i1, i2, optimizer)
     dict_inf[:cost] = "infidelity"
     dict_W1[:cost] = "W1"
