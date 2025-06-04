@@ -26,6 +26,8 @@ function makesim(d::Dict)
         optimizer = MosekTools.Optimizer
     elseif lowercase(optimizer_str) == "scs"
         optimizer = SCS.Optimizer
+    elseif lowercase(optimizer_str) == "none"
+        optimizer = nothing
     else
         error("Invalid optimizer string $(d["optimizer"])")
     end
@@ -39,9 +41,11 @@ function makesim(d::Dict)
 
         infidelity_vec[k] = ghz_infidelity(final_state)
 
-        dims = ntuple(_ -> 2, Nqubits)
-        final_dm = Qobj(final_state, dims=dims) |> ket2dm
-        W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer, silent=silent)
+        if !isnothing(optimizer)
+            dims = ntuple(_ -> 2, Nqubits)
+            final_dm = Qobj(final_state, dims=dims) |> ket2dm
+            W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer, silent=silent)
+        end
 
         GC.gc() # Being safe about running out of memory
     end
@@ -112,10 +116,10 @@ function main()
 
     dicts = dict_list(allparams)
 
-
     my_chunk = get_chunk(dicts, slurm_task_id, slurm_ntasks)
     ntasks_in_chunk = length(my_chunk)
-    if haskey(ENV, "SLURM_JOB_ID")
+
+    if haskey(ENV, "SLURM_JOB_ID") # Change log output if in SLURM environment
         for (i,d) in enumerate(my_chunk)
             println("[$(Dates.now())] Running simulation $i/$ntasks_in_chunk, Nqubits=$(d["Nqubits"]), Npoints=$(d["Npoints"]), theta1=$(d["theta1"]) ...")
             produce_or_load(makesim, d, datadir("MiladCircuitDistances"), loadfile=false)
