@@ -8,13 +8,14 @@ function main()
 
     mkpath(plotsdir("MiladCircuitHeatmaps")) # Where we will store plots
 
-    for df_nqubits in @groupby(df, :Nqubits, :i1, :i2, :optimizer)
+    for df_nqubits in @groupby(df, :Nqubits, :Npoints, :i1, :i2, :optimizer)
         @assert size(df_nqubits, 1) == 1
         Nqubits = df_nqubits[1,:Nqubits]
+        Npoints = df_nqubits[1,:Npoints]
         i1 = df_nqubits[1,:i1]
         i2 = df_nqubits[1,:i2]
         optimizer = df_nqubits[1,:optimizer]
-        Npoints = df_nqubits[1,:Npoints]
+
         x = df_nqubits[1,:theta1s]
         y = df_nqubits[1,:theta2s]
 
