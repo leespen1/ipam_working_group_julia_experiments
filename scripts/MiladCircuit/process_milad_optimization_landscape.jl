@@ -21,11 +21,17 @@ for df_nqubits in @groupby(df, :Nqubits, :i1, :i2, :optimizer)
 
     heatmap_size = (length(theta1s), length(theta2s))
     data_infidelity = fill(NaN, heatmap_size)
-    data_W1 = fill(NaN, heatmap_size)
 
     for (i, row) in enumerate(eachrow(sorted_df))
         data_infidelity[i,:] .= row[:infidelity_vec]
-        data_W1[i,:] .= row[:W1_vec]
+    end
+    if (optimizer == "none")
+        data_W1 = missing
+    else
+        data_W1 = fill(NaN, heatmap_size)
+        for (i, row) in enumerate(eachrow(sorted_df))
+            data_W1[i,:] .= row[:W1_vec]
+        end
     end
 
     d = @dict(Nqubits, Npoints, optimizer, i1, i2)
