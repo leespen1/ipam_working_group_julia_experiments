@@ -19,7 +19,7 @@ export MAX_NQUBITS=12
 export NPOINTS=101
 export J=0.1
 export T=100.0
-export OPTIMIZER=NONE
+export OPTIMIZER=SCS
 export SILENT=false
 
 # To avoid Pkg/core-dump errors
