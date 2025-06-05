@@ -35,7 +35,7 @@ function makesim(d::Dict)
 
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
-    terminationStatus_vec = Vector{Float64}(undef, Npoints)
+    terminationStatus_vec = Vector{Int}(undef, Npoints)
     final_states_mat = Matrix{ComplexF64}(undef, 2^Nqubits, Npoints)
 
     optimizer_str = d["optimizer"]
@@ -97,9 +97,10 @@ function makesim(d::Dict)
         if !isnothing(optimizer)
             dims = ntuple(_ -> 2, Nqubits)
             final_dm = ket2dm(final_state)
-            W1_vec[k], terminationStatus_vec[k] = W1_primal(
+            W1_distance, terminationStatus = W1_primal(
                 final_dm, ghz_dm, optimizer, silent=silent, term_status=Val(true)
             )
+            W1_vec[k], terminationStatus_vec[k] = W1_distance, Int(terminationStatus)
         end
 
         GC.gc() # Being safe about running out of memory
