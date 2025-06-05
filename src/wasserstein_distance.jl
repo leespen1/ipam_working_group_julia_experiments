@@ -7,7 +7,9 @@ Compute the W1 distance (Quantum Earth Mover's Distance) between density
 matrices sigma and rho using the primal formulation and solving as a PSD
 program.
 """
-function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true, term_status=Val(false))
+function W1_primal(sigma::QuantumObject, rho::QuantumObject,
+                   optimizer=MosekTools.Optimizer; silent=true)
+
     @assert size(sigma) == size(rho)
     N = size(sigma, 1)
     Nqubits = length(sigma.dims)
@@ -43,11 +45,7 @@ function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTool
     # need `real` here so JuMP recognizes that the objective function is real.
     @objective(model, Min, sum(real(tr(sigmas[i])) for i in 1:Nqubits))
     optimize!(model)
-    if getVal(term_status) == true
-        return JuMP.objective_value(model), JuMP.termination_status(model)
-    else
-        return JuMP.objective_value(model)
-    end
+    return model
 end
 
 
@@ -56,7 +54,9 @@ Compute the W1 distance (Quantum Earth Mover's Distance) between density
 matrices sigma and rho using the dual formulation and solving as a PSD
 program.
 """
-function W1_dual(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true)
+function W1_dual(sigma::QuantumObject, rho::QuantumObject,
+                 optimizer=MosekTools.Optimizer; silent=true)
+
     # To make this efficient inside a loop, I will want to reuse a single model
     @assert size(sigma) == size(rho)
     N = size(sigma, 1)
@@ -88,7 +88,7 @@ function W1_dual(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.
     # dot conjugates first arg, but that's fine since H is Hermitian
     @objective(model, Max, real(dot(H, sigma_minus_rho))) 
     optimize!(model)
-    return JuMP.objective_value(model)
+    return model
 end
 
 

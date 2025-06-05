@@ -16,9 +16,12 @@ export MAX_NQUBITS=12
 export NPOINTS=25
 export OPTIMIZER=NONE
 export SILENT=false
+export I1=1
+export I2=2
 
 # To avoid Pkg/core-dump errors
-unset LD_LIBRARY_PATH
-module purge
+#unset LD_LIBRARY_PATH
+#module purge
 
-julia --threads=$SLURM_CPUS_PER_TASK generate_milad_optimization_landscape.jl
+#julia --threads=$SLURM_CPUS_PER_TASK generate_milad_optimization_landscape.jl
+julia generate_milad_optimization_landscape.jl

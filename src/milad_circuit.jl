@@ -53,9 +53,14 @@ function infidelity(psi1, psi2)
     return 1-abs2(dot(psi1,psi2))
 end
 
-function ghz_infidelity(psi)
+"""
+Measure infidelity between state psi and the GHZ-like state
+
+|000…⟩ + rel_phase*|111…⟩
+"""
+function ghz_infidelity(psi; rel_phase=1)
     #@assert size(psi,2) == 1
-    return 1 - 0.5*abs2(first(psi) + last(psi))
+    return 1 - 0.5*abs2(first(psi) + last(psi)*conj(rel_phase))
 end
 
 
