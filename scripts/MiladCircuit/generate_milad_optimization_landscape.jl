@@ -10,16 +10,21 @@ include(srcdir("milad_circuit.jl"))
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
 """
 function makesim(d::Dict)
-    @unpack Nqubits, i1, i2, theta1, Npoints, angleInitialization, optimizer = d
+    @unpack Nqubits, i1, i2, theta1, Npoints, angleInitialization, optimizer, grad = d
 
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
     terminationStatus_vec = Vector{Int}(undef, Npoints)
+    grad_mat_inf = Matrix{Float64}(undef, Nqubits, Npoints)
+    grad_mat_W1 = Matrix{Float64}(undef, Nqubits, Npoints)
 
     theta2range = LinRange(0, 2pi, Npoints)
-    ghz_dm = ghz_operator(Nqubits, rel_phase=(-im)^Nqubits)
+
+    rel_phase = (-im)^Nqubits
+    ghz_dm = ghz_operator(Nqubits, rel_phase=rel_phase)
 
     angles = Vector{Float64}(undef, Nqubits)
+
     if angleInitialization == "random"
         angles .= rand(MersenneTwister(0), Nqubits) .* 2pi
     elseif angleInitialization == "optimal"
@@ -32,7 +37,7 @@ function makesim(d::Dict)
         angles .= rand(MersenneTwister(0), Nqubits) .* 2pi
         angles[1] = pi/2
     end
-        
+
 
     if optimizer == "mosek"
         optimizer_obj = MosekTools.Optimizer
@@ -46,7 +51,6 @@ function makesim(d::Dict)
 
     # Optional silent optimization set by environment
     silent = tryparse(Bool, get(ENV, "SILENT", "true"))
-
     dims = ntuple(_ -> 2, Nqubits)
 
     angles[i1] = theta1
@@ -54,7 +58,7 @@ function makesim(d::Dict)
         angles[i2] = theta2
         final_state = run_milad_circuit(angles) |> statevec
 
-        infidelity_vec[k] = ghz_infidelity(final_state, rel_phase = (-im)^Nqubits)
+        infidelity_vec[k] = ghz_infidelity(final_state, rel_phase=rel_phase)
 
         if !isnothing(optimizer_obj)
             final_dm = Qobj(final_state, dims=dims) |> ket2dm
@@ -62,6 +66,25 @@ function makesim(d::Dict)
 
             W1_vec[k] = JuMP.objective_value(opt_model)
             terminationStatus_vec[k] = Int(JuMP.termination_status(opt_model))
+        end
+
+        if grad
+            h = 1e-5
+            angles_fd = copy(angles)
+            for findiff_i in 1:Nqubits
+                angles_fd .= angles
+                angles_fd[findiff_i] += h
+                final_state_fd = run_milad_circuit(angles_fd) |> statevec
+                infidelity_fd = ghz_infidelity(final_state_fd, rel_phase=rel_phase)
+                grad_mat_inf[findiff_i,k] = (infidelity_fd - infidelity_vec[k])/h
+
+                if !isnothing(optimizer_obj)
+                    final_dm_fd = Qobj(final_state_fd, dims=dims) |> ket2dm
+                    opt_model_fd = W1_primal(final_dm_fd, ghz_dm, optimizer_obj, silent=silent)
+                    W1_fd = JuMP.objective_value(opt_model_fd)
+                    grad_mat_W1[findiff_i,k] = (W1_fd - W1_vec[k])/h
+                end
+            end
         end
 
         GC.gc() # Being safe about running out of memory
@@ -74,6 +97,13 @@ function makesim(d::Dict)
     if !isnothing(optimizer_obj)
         fulld["W1_vec"] = W1_vec
         fulld["terminationStatus_vec"] = terminationStatus_vec
+    end
+
+    if grad
+        fulld["grad_mat_inf"] = grad_mat_inf
+        if !isnothing(optimizer_obj)
+            fulld["grad_mat_W1"] = grad_mat_W1
+        end
     end
 
     return fulld
