@@ -1,0 +1,29 @@
+#!/bin/bash --login
+#SBATCH --job-name=ising_ghz  # Job name
+#SBATCH --mail-type=NONE             # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=leespen1@msu.edu # Where to send mail. 
+#SBATCH --nodes=1                    # Maximum number of nodes to be allocated
+#SBATCH --ntasks-per-node=1          # Maximum number of tasks on each node
+#SBATCH --cpus-per-task=4            # Number of processors for each task (want several because the BLAS is multithreaded, even though my Julia code is not)
+#SBATCH --mem=16G                    # Memory (i.e. RAM) per NODE
+#SBATCH --export=ALL                 
+#SBATCH --constraint=intel18         # Run on the same node launched from
+#SBATCH --time=00:05:00              # Wall time limit (days-hrs:min:sec)
+#SBATCH --output=Log/%A/ising_ghz_%A_%a.log     # Path to the standard output and error files relative to the working directory
+#SBATCH --array=0-9                 # Must start at 0
+
+export MAX_AMPLITUDE=1
+export CONTROL_FUNC_TYPE=SIN
+export CONTROL_PERM_TYPE=INVARIANT
+export MAX_NQUBITS=12
+export NPOINTS=101
+export J=0.1
+export T=100.0
+export OPTIMIZER=NONE
+export SILENT=false
+
+# To avoid Pkg/core-dump errors
+unset LD_LIBRARY_PATH
+module purge
+
+julia --threads=$SLURM_CPUS_PER_TASK generate_ising_ghz_optimization_landscape.jl
