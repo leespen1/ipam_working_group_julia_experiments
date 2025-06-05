@@ -49,6 +49,7 @@ function makesim(d::Dict)
 
     dims = ntuple(_ -> 2, Nqubits)
 
+    angles[i1] = theta1
     for (k, theta2) in enumerate(theta2range)
         angles[i2] = theta2
         final_state = run_milad_circuit(angles) |> statevec
