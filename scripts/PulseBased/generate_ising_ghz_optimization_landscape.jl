@@ -31,7 +31,7 @@ end
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
 """
 function makesim(d::Dict)
-    @unpack Nqubits, i1, i2, theta1, Npoints, maxAmplitude, controlFuncType, controlPermType, J, T = d
+    @unpack Nqubits, i1, i2, theta1, Npoints, maxAmplitude, controlFuncType, controlPermType, J, T, seed = d
 
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
@@ -61,15 +61,17 @@ function makesim(d::Dict)
         Ht = generic_ising_spinchain_perm_invariant(
             Val(Nqubits), control, input_length, J
         )
+        Nparams = 2*getVal(input_length)
     elseif controlPermType == "normal"
         Ht = generic_ising_spinchain_perm_invariant(
             Val(Nqubits), control, input_length, J
         )
+        Nparams = 2*Nqubits*getVal(input_length)
     else
         error("Invalid control function type $controlPermType")
     end
 
-    controlVector = (0.5 .- rand(MersenneTwister(0), Nqubits)) .* (2*maxAmplitude)
+    controlVector = (0.5 .- rand(MersenneTwister(seed), Nparams)) .* (2*maxAmplitude)
     controlVector[i1] = theta1
 
     # Optional silent optimization set by environment (not in dict because I don't want it in savename)
@@ -83,7 +85,8 @@ function makesim(d::Dict)
     for (k, theta2) in enumerate(theta2range)
         controlVector[i2] = theta2
 
-        sol = sesolve(Ht, ground_state, tlist, params=controlVector, progress_bar=Val(false))
+        sol = sesolve(Ht, ground_state, tlist, params=controlVector,
+                      progress_bar=Val(false))
         final_state = last(sol.states)
         infidelity_vec[k] = ghz_infidelity(final_state)
 
@@ -116,6 +119,7 @@ function main()
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
     J = DrWatson.readenv("J", 0.1)
     T = DrWatson.readenv("T", 100.0)
+    seed = DrWatson.readenv("SEED", 0)
     optimizer_str = get(ENV, "OPTIMIZER", "mosek") |> lowercase
 
     # For this to work, all job arrays should start at 0 and use stepsize 1
@@ -138,6 +142,7 @@ function main()
         "controlPermType" => controlPermType,
         "J" => J,
         "T" => T,
+        "seed" => seed,
     )
 
     dicts = dict_list(allparams)
