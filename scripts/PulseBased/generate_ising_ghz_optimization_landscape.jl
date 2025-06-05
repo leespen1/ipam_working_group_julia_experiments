@@ -35,6 +35,7 @@ function makesim(d::Dict)
 
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
+    terminationStatus_vec = Vector{Float64}(undef, Npoints)
 
     optimizer_str = d["optimizer"]
     if lowercase(optimizer_str) == "mosek"
@@ -82,6 +83,7 @@ function makesim(d::Dict)
     ground_state = basis(2^Nqubits, 0, dims=ntuple(_ -> 2, Nqubits))
     tlist = SVector(0.0,T)
 
+
     for (k, theta2) in enumerate(theta2range)
         controlVector[i2] = theta2
 
@@ -93,7 +95,9 @@ function makesim(d::Dict)
         if !isnothing(optimizer)
             dims = ntuple(_ -> 2, Nqubits)
             final_dm = ket2dm(final_state)
-            W1_vec[k] = W1_primal(final_dm, ghz_dm, optimizer, silent=silent)
+            W1_vec[k], terminationStatus_vec[k] = W1_primal(
+                final_dm, ghz_dm, optimizer, silent=silent, term_status=Val(true)
+            )
         end
 
         GC.gc() # Being safe about running out of memory
@@ -105,6 +109,7 @@ function makesim(d::Dict)
     fulld["infidelity_vec"] = infidelity_vec
     if !isnothing(optimizer)
         fulld["W1_vec"] = W1_vec
+        fulld["terminationStatus_vec"] = terminationStatus_vec
     end
 
     return fulld

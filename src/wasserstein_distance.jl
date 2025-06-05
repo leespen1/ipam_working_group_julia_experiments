@@ -7,7 +7,7 @@ Compute the W1 distance (Quantum Earth Mover's Distance) between density
 matrices sigma and rho using the primal formulation and solving as a PSD
 program.
 """
-function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true)
+function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTools.Optimizer; silent=true, term_status=Val(false))
     @assert size(sigma) == size(rho)
     N = size(sigma, 1)
     Nqubits = length(sigma.dims)
@@ -43,7 +43,11 @@ function W1_primal(sigma::QuantumObject, rho::QuantumObject, optimizer=MosekTool
     # need `real` here so JuMP recognizes that the objective function is real.
     @objective(model, Min, sum(real(tr(sigmas[i])) for i in 1:Nqubits))
     optimize!(model)
-    return JuMP.objective_value(model)
+    if getVal(term_status) == true
+        return JuMP.objective_value(model), JuMP.termination_status(model)
+    else
+        return JuMP.objective_value(model)
+    end
 end
 
 
