@@ -13,6 +13,8 @@
 #SBATCH --array=0-99                 # Must start at 0
 
 export MAX_AMPLITUDE=2
+export I1=1
+export I1=2
 export CONTROL_FUNC_TYPE=SIN
 export CONTROL_PERM_TYPE=INVARIANT
 export MAX_NQUBITS=12
@@ -21,6 +23,7 @@ export J=0.1
 export T=100.0
 export OPTIMIZER=SCS
 export SILENT=false
+export GRAD=false
 
 # To avoid Pkg/core-dump errors
 unset LD_LIBRARY_PATH

@@ -159,7 +159,7 @@ function main()
     i2 = DrWatson.readenv("I2", 3)
     grad = DrWatson.readenv("GRAD", false)
     angleInitialization = get(ENV, "ANGLE_INITIALIZATION", "pirandom") |> lowercase
-    optimizer = get(ENV, "OPTIMIZER", "mosek") |> lowercase
+    optimizer = get(ENV, "OPTIMIZER", "scs") |> lowercase
 
     # For this to work, all job arrays should start at 0 and use stepsize 1
     slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)

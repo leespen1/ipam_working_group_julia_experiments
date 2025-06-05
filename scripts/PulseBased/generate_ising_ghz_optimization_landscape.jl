@@ -31,20 +31,20 @@ end
 Iterate over theta2 for fixed theta1. Get Infidelity and W1 distances as vectors.
 """
 function makesim(d::Dict)
-    @unpack Nqubits, i1, i2, theta1, Npoints, maxAmplitude, controlFuncType, controlPermType, J, T, seed = d
+    @unpack Nqubits, i1, i2, theta1, Npoints, maxAmplitude, controlFuncType,
+            controlPermType, J, T, seed, optimizer, grad = d
 
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
     terminationStatus_vec = Vector{Int}(undef, Npoints)
     final_states_mat = Matrix{ComplexF64}(undef, 2^Nqubits, Npoints)
 
-    optimizer_str = d["optimizer"]
-    if lowercase(optimizer_str) == "mosek"
-        optimizer = MosekTools.Optimizer
-    elseif lowercase(optimizer_str) == "scs"
-        optimizer = SCS.Optimizer
-    elseif lowercase(optimizer_str) == "none"
-        optimizer = nothing
+    if optimizer == "mosek"
+        optimizer_obj = MosekTools.Optimizer
+    elseif optimizer == "scs"
+        optimizer_obj = SCS.Optimizer
+    elseif optimizer == "none"
+        optimizer_obj = nothing
     else
         error("Invalid optimizer string $optimizer_str")
     end
@@ -79,11 +79,13 @@ function makesim(d::Dict)
     # Optional silent optimization set by environment (not in dict because I don't want it in savename)
     silent = tryparse(Bool, get(ENV, "SILENT", "true"))
 
+    grad_mat_inf = Matrix{Float64}(undef, Nparams, Npoints)
+    grad_mat_W1 = Matrix{Float64}(undef, Nparams, Npoints)
     theta2range = LinRange(-maxAmplitude, maxAmplitude, Npoints)
     ghz_dm = ghz_operator(Nqubits)
     ground_state = basis(2^Nqubits, 0, dims=ntuple(_ -> 2, Nqubits))
     tlist = SVector(0.0,T)
-
+    dims = ntuple(_ -> 2, Nqubits)
 
     for (k, theta2) in enumerate(theta2range)
         controlVector[i2] = theta2
@@ -94,13 +96,33 @@ function makesim(d::Dict)
         infidelity_vec[k] = ghz_infidelity(final_state)
         final_states_mat[:,k] .= final_state.data
 
-        if !isnothing(optimizer)
-            dims = ntuple(_ -> 2, Nqubits)
+        if !isnothing(optimizer_obj)
             final_dm = ket2dm(final_state)
-            W1_distance, terminationStatus = W1_primal(
-                final_dm, ghz_dm, optimizer, silent=silent, term_status=Val(true)
-            )
-            W1_vec[k], terminationStatus_vec[k] = W1_distance, Int(terminationStatus)
+            opt_model = W1_primal(final_dm, ghz_dm, optimizer_obj, silent=silent)
+
+            W1_vec[k] = JuMP.objective_value(opt_model)
+            terminationStatus_vec[k] = Int(JuMP.termination_status(opt_model))
+        end
+
+        if grad
+            h = 1e-5
+            controlvec_fd = copy(controlVector)
+            for findiff_i in 1:Nqubits
+                controlvec_fd .= controlVector
+                controlvec_fd[findiff_i] += h
+                sol_fd = sesolve(Ht, ground_state, tlist, params=controlVector,
+                              progress_bar=Val(false))
+                final_state_fd = last(sol_fd.states)
+                infidelity_fd = ghz_infidelity(final_state_fd)
+                grad_mat_inf[findiff_i,k] = (infidelity_fd - infidelity_vec[k])/h
+
+                if !isnothing(optimizer_obj)
+                    final_dm_fd = ket2dm(final_state_fd)
+                    opt_model_fd = W1_primal(final_dm_fd, ghz_dm, optimizer_obj, silent=silent)
+                    W1_fd = JuMP.objective_value(opt_model_fd)
+                    grad_mat_W1[findiff_i,k] = (W1_fd - W1_vec[k])/h
+                end
+            end
         end
 
         GC.gc() # Being safe about running out of memory
@@ -111,9 +133,16 @@ function makesim(d::Dict)
     fulld["theta2range"] = theta2range
     fulld["infidelity_vec"] = infidelity_vec
     fulld["finalSates_mat"] = final_states_mat
-    if !isnothing(optimizer)
+    if !isnothing(optimizer_obj)
         fulld["W1_vec"] = W1_vec
         fulld["terminationStatus_vec"] = terminationStatus_vec
+    end
+
+    if grad
+        fulld["grad_mat_inf"] = grad_mat_inf
+        if !isnothing(optimizer_obj)
+            fulld["grad_mat_W1"] = grad_mat_W1
+        end
     end
 
     return fulld
@@ -121,37 +150,41 @@ end
 
 
 function main()
-    maxAmplitude = DrWatson.readenv("MAX_AMPLITUDE", 1.0)
-    controlFuncType = get(ENV, "CONTROL_FUNC_TYPE", "sin") |> lowercase
-    controlPermType = get(ENV, "CONTROL_PERM_TYPE", "invariant") |> lowercase
     Npoints = DrWatson.readenv("NPOINTS", 11)
     max_Nqubits = DrWatson.readenv("MAX_NQUBITS", 4)
+    min_Nqubits = DrWatson.readenv("MIN_NQUBITS", 1)
+    i1 = DrWatson.readenv("I1", 1)
+    i2 = DrWatson.readenv("I2", 2)
+    grad = DrWatson.readenv("GRAD", false)
+    maxAmplitude = DrWatson.readenv("MAX_AMPLITUDE", 1.0)
     J = DrWatson.readenv("J", 0.1)
     T = DrWatson.readenv("T", 100.0)
     seed = DrWatson.readenv("SEED", 0)
-    optimizer_str = get(ENV, "OPTIMIZER", "mosek") |> lowercase
+    controlFuncType = get(ENV, "CONTROL_FUNC_TYPE", "sin") |> lowercase
+    controlPermType = get(ENV, "CONTROL_PERM_TYPE", "invariant") |> lowercase
+    optimizer = get(ENV, "OPTIMIZER", "scs") |> lowercase
 
     # For this to work, all job arrays should start at 0 and use stepsize 1
     slurm_task_id = DrWatson.readenv("SLURM_ARRAY_TASK_ID", 0)
     slurm_ntasks = DrWatson.readenv("SLURM_ARRAY_TASK_COUNT", 1)
 
-
     println("Running test using following environment variables:")
     @show Npoints, max_Nqubits, slurm_task_id, slurm_ntasks
 
     allparams = Dict{String, Any}(
-        "Nqubits" => collect(1:max_Nqubits),
-        "i1" => [1],
-        "i2" => [2],
-        "maxAmplitude" => maxAmplitude,
-        "theta1" => collect(LinRange(-maxAmplitude, maxAmplitude, Npoints)),
         "Npoints" => [Npoints],
-        "optimizer" => optimizer_str,
-        "controlFuncType" => controlFuncType,
-        "controlPermType" => controlPermType,
+        "Nqubits" => collect(1:max_Nqubits),
+        "i1" => i1,
+        "i2" => i2,
+        "grad" => grad,
+        "maxAmplitude" => maxAmplitude,
         "J" => J,
         "T" => T,
         "seed" => seed,
+        "controlFuncType" => controlFuncType,
+        "controlPermType" => controlPermType,
+        "optimizer" => optimizer,
+        "theta1" => collect(LinRange(-maxAmplitude, maxAmplitude, Npoints)),
     )
 
     dicts = dict_list(allparams)
