@@ -36,6 +36,7 @@ function makesim(d::Dict)
     infidelity_vec = Vector{Float64}(undef, Npoints)
     W1_vec = Vector{Float64}(undef, Npoints)
     terminationStatus_vec = Vector{Float64}(undef, Npoints)
+    final_states_mat = Matrix{ComplexF64}(undef, 2^Nqubits, Npoints)
 
     optimizer_str = d["optimizer"]
     if lowercase(optimizer_str) == "mosek"
@@ -91,6 +92,7 @@ function makesim(d::Dict)
                       progress_bar=Val(false))
         final_state = last(sol.states)
         infidelity_vec[k] = ghz_infidelity(final_state)
+        final_states_mat[:,k] .= final_state.data
 
         if !isnothing(optimizer)
             dims = ntuple(_ -> 2, Nqubits)
@@ -107,6 +109,7 @@ function makesim(d::Dict)
     fulld["controlVector"] = controlVector
     fulld["theta2range"] = theta2range
     fulld["infidelity_vec"] = infidelity_vec
+    fulld["finalSates_mat"] = final_states_mat
     if !isnothing(optimizer)
         fulld["W1_vec"] = W1_vec
         fulld["terminationStatus_vec"] = terminationStatus_vec
