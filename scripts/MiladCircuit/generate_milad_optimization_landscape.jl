@@ -62,7 +62,7 @@ function makesim(d::Dict)
 
         if !isnothing(optimizer_obj)
             final_dm = Qobj(final_state, dims=dims) |> ket2dm
-            opt_model = W1_primal(final_dm, ghz_dm, optimizer_obj, silent=silent)
+            opt_model = W1_dual(final_dm, ghz_dm, optimizer_obj, silent=silent)
 
             W1_vec[k] = JuMP.objective_value(opt_model)
             terminationStatus_vec[k] = Int(JuMP.termination_status(opt_model))
@@ -80,7 +80,7 @@ function makesim(d::Dict)
 
                 if !isnothing(optimizer_obj)
                     final_dm_fd = Qobj(final_state_fd, dims=dims) |> ket2dm
-                    opt_model_fd = W1_primal(final_dm_fd, ghz_dm, optimizer_obj, silent=silent)
+                    opt_model_fd = W1_dual(final_dm_fd, ghz_dm, optimizer_obj, silent=silent)
                     W1_fd = JuMP.objective_value(opt_model_fd)
                     grad_mat_W1[findiff_i,k] = (W1_fd - W1_vec[k])/h
                 end
