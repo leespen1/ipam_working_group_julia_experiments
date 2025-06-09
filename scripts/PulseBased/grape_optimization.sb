@@ -25,7 +25,7 @@ export T=100.0
 export OPTIMIZER=all
 
 # To avoid Pkg/core-dump errors
-#unset LD_LIBRARY_PATH
-#module purge
+unset LD_LIBRARY_PATH
+module purge
 
 julia grape_optimization.jl
