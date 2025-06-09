@@ -34,7 +34,7 @@ input_length should be a Val type for efficiney
 Length of p given to the output function must not be smaller than
 input_length*control_index.
 """
-function offset_f(f::Function, control_index::Integer, input_length::Val{N}) where N
+function offset_f(f, control_index, input_length)
     @assert control_index >= 1
     offset = (control_index-1)*getVal(input_length)
     return (p,t) -> f(ntuple(i -> p[offset+i], input_length), t)
@@ -49,6 +49,21 @@ function sincontrol(p, t)
     return p[1]*sin(t)
 end
 
+function evalgrapecontrol(p, t, tf, N_amplitudes)
+    if (t < 0) || (t > tf*(1+eps()))
+        throw(DomainError(t, "Value is outside the interval [0,tf]"))
+    end
+    region_width = tf / N_amplitudes
+    region_index = min(floor(Int, t / region_width) + 1, N_amplitudes)
+    return p[region_index]
+end
+
+function makegrapecontrol(tf, N_amplitudes)
+    return (p, t) -> evalgrapecontrol(p, t, tf, N_amplitudes)
+end
+
+
+
 """
 Ising Spinchain with coupling strength J.
 
@@ -57,8 +72,8 @@ Ordering is: X controls for each qubit, Z controls for each qubits, ZZ controls
 
 J should be roughly one-tenth the strength of the Xs and Zs.
 """
-function generic_ising_spinchain_independent(Nqubits::Union{Integer,Val},
-        control::Function, input_length::Val, J::Real=0.1)
+function generic_ising_spinchain_independent(Nqubits,
+        control, input_length, J=0.1)
 
     Xs = X_hamiltonians(Nqubits)
     Zs = Z_hamiltonians(Nqubits)
@@ -86,8 +101,8 @@ Ordering is: X controls for each qubit, Z controls for each qubits, ZZ controls
 
 J should be roughly one-tenth the strength of the Xs and Zs.
 """
-function generic_ising_spinchain_perm_invariant(Nqubits::Union{Integer,Val}, control::Function,
-        input_length::Val, J::Real=0.1)
+function generic_ising_spinchain_perm_invariant(Nqubits, control,
+        input_length, J=0.1)
 
     Xs = X_hamiltonians(Nqubits)
     Zs = Z_hamiltonians(Nqubits)

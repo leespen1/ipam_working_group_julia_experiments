@@ -65,7 +65,7 @@ function makesim(d::Dict)
         )
         Nparams = 2*getVal(input_length)
     elseif controlPermType == "normal"
-        Ht = generic_ising_spinchain_perm_invariant(
+        Ht = generic_ising_spinchain_independent(
             Val(Nqubits), control, input_length, J
         )
         Nparams = 2*Nqubits*getVal(input_length)
